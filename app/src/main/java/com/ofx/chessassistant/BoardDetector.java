@@ -54,17 +54,10 @@ public class BoardDetector {
     }
 
     private static final int SEARCH_STABLE_COUNT = 2;
-    private static final float OCCUPANCY_DELTA = 12f;
 
     private int stableHits;
     private int prevLeft = -1, prevTop = -1, prevSize = -1;
 
-    // per-square empty reference luminance from the calibration frame
-    private final float[] emptyRef = new float[64];
-    private boolean refValid;
-
-    // last seen piece map, 'W'/'B'/0, in ROW-MAJOR screen order (row 0 = top)
-    private final char[] lastMap = new char[64];
     private boolean lastMapValid;
 
     private boolean whiteBottom = true;
@@ -105,18 +98,14 @@ public class BoardDetector {
             return new Frame(false, null, left, top, size, whiteBottom, sideToMove, engineColor);
 
         int sq = size / 8;
-        float[] lum = new float[64];
+        char[] map = new char[64];
         for (int r = 0; r < 8; r++)
             for (int f = 0; f < 8; f++)
-                lum[r * 8 + f] = squareLuma(bmp, left + f * sq, top + r * sq, sq);
+                map[r * 8 + f] = classifySquare(bmp, left + f * sq, top + r * sq, sq);
 
-        if (!refValid) {
-            // calibration frame: reference luminance + orientation + engine color.
+        if (!lastMapValid) {
+            // calibration frame: detect orientation + engine color from piece placement.
             // engine plays the color whose pieces sit in the bottom half of the screen.
-            System.arraycopy(lum, 0, emptyRef, 0, 64);
-            refValid = true;
-
-            char[] map = classify(lum, bmp, left, top, sq);
             int whiteTop = 0, whiteBottomRows = 0;
             for (int f = 0; f < 8; f++) {
                 if (map[0 * 8 + f] == 'W' || map[1 * 8 + f] == 'W') whiteTop++;
@@ -124,44 +113,61 @@ public class BoardDetector {
             }
             whiteBottom = whiteBottomRows >= whiteTop;
             engineColor = whiteBottom ? 'w' : 'b';
-            sideToMove = (char) ('w' + 'b' - engineColor); // opponent moves first
+            sideToMove = (char) ('w' + 'b' - engineColor); // assume opponent moves first
 
-            System.arraycopy(map, 0, lastMap, 0, 64);
+            lastMap = map;
             lastMapValid = true;
+            android.util.Log.i("Chessington", "calibrated: whiteBottom=" + whiteBottom
+                    + " engine=" + engineColor);
             return new Frame(false, null, left, top, size, whiteBottom, sideToMove, engineColor);
         }
 
-        char[] map = classify(lum, bmp, left, top, sq);
-
-        if (lastMapValid && !Arrays.equals(map, lastMap)) {
+        if (!Arrays.equals(map, lastMap)) {
             // a ply was played; side to move flips
             sideToMove = (char) ('w' + 'b' - sideToMove);
-            System.arraycopy(map, 0, lastMap, 0, 64);
+            android.util.Log.i("Chessington", "ply detected: side=" + sideToMove);
+            lastMap = map;
         }
 
         refreshTypes(bmp, left, top, size, sq);
         String fen = buildFen(map);
         if (fen == null) return new Frame(false, null, left, top, size, whiteBottom, sideToMove, engineColor);
+        android.util.Log.i("Chessington", "fen=" + fen);
         return new Frame(true, fen, left, top, size, whiteBottom, sideToMove, engineColor);
     }
 
-    private char[] classify(float[] lum, Bitmap bmp, int left, int top, int sq) {
-        char[] pieces = new char[64];
-        for (int r = 0; r < 8; r++) {
-            for (int f = 0; f < 8; f++) {
-                int idx = r * 8 + f;
-                float delta = lum[idx] - emptyRef[idx];
-                if (Math.abs(delta) < OCCUPANCY_DELTA) continue;
-                boolean lightSquare = ((r + f) & 1) == 0;
-                // white pieces brighten the square, black pieces darken it.
-                // white piece on dark square = big positive; black on light = big negative.
-                // white on light / black on dark = small same-sign — parity bias resolves
-                // the ambiguous middle: bias light squares by +8, dark squares by -8.
-                float biased = delta + (lightSquare ? 8f : -8f);
-                pieces[idx] = biased > 0 ? 'W' : 'B';
+    // last seen piece map, 'W'/'B'/0, in ROW-MAJOR screen order (row 0 = top)
+    private char[] lastMap = new char[64];
+
+    /**
+     * Absolute occupancy detection — no reference frame needed, works mid-game.
+     * Empty squares are uniform marble; pieces (chess.com style: white fill with
+     * dark outline, or near-black fill) create strong internal contrast.
+     * Color from the center region mean: white fill ~250, black fill ~30.
+     */
+    private char classifySquare(Bitmap bmp, int x, int y, int sq) {
+        int x0 = x + (int) (sq * 0.30f), y0 = y + (int) (sq * 0.30f);
+        int x1 = x + (int) (sq * 0.70f), y1 = y + (int) (sq * 0.70f);
+
+        int min = 255, max = 0;
+        long centerSum = 0;
+        int n = 0;
+        for (int yy = y0; yy < y1 && yy < bmp.getHeight(); yy += 2) {
+            for (int xx = x0; xx < x1 && xx < bmp.getWidth(); xx += 2) {
+                int px = bmp.getPixel(xx, yy);
+                int luma = ((px >> 16 & 0xFF) * 299 + (px >> 8 & 0xFF) * 587 + (px & 0xFF) * 114) / 1000;
+                if (luma < min) min = luma;
+                if (luma > max) max = luma;
+                centerSum += luma;
+                n++;
             }
         }
-        return pieces;
+        if (n == 0) return 0;
+        float centerMean = centerSum / (float) n;
+
+        // empty marble: spread under ~35 even on textured themes
+        if (max - min < 45) return 0;
+        return centerMean > 145 ? 'W' : 'B';
     }
 
     private float squareLuma(Bitmap bmp, int x, int y, int sq) {

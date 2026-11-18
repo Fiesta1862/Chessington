@@ -26,7 +26,7 @@ public class AssistantService extends Service {
 
     private static final String CHANNEL_ID = "assistant";
     private static final String STOCKFISH_ASSET = "stockfish";
-    private static final int ANALYSIS_PERIOD_MS = 1200;
+    private static final int ANALYSIS_PERIOD_MS = 900;
 
     private MediaProjection projection;
     private VirtualDisplay vdisplay;
