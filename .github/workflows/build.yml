@@ -18,8 +18,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept SDK licenses (runner ships the Android SDK)
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
       - name: Download Stockfish (android arm64) into assets
         run: |
@@ -52,3 +52,16 @@ jobs:
         with:
           name: Chessington-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Release APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/debug/app-debug.apk
+          name: Chessington ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: |
+            Direct APK download. Sideload and go undefeated.
+            - Hidden overlay assistant
+            - Stockfish 16, Skill Level 20
+            - Auto-move gestures on Chess.com
