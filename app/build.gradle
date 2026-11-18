@@ -26,6 +26,11 @@ android {
 }
 
 dependencies {
+    constraints {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22") {
+            because "stdlib 1.8+ merged jdk8 classes; old jdk8 artifact duplicates them"
+        }
+    }
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.core:core:1.13.1'
 }
