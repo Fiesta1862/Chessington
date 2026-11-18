@@ -19,6 +19,10 @@ public class MainActivity extends Activity {
 
         Button start = findViewById(R.id.btn_start);
         Button acc = findViewById(R.id.btn_accessibility);
+        Button manual = findViewById(R.id.btn_manual);
+
+        manual.setOnClickListener(v ->
+                startActivity(new Intent(this, ManualBoardActivity.class)));
 
         acc.setOnClickListener(v -> {
             Intent i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);

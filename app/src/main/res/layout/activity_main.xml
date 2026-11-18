@@ -41,4 +41,21 @@
         android:text="2. Go Undefeated"
         android:textColor="#0A0C0A"
         android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/btn_manual"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#1A2B1F"
+        android:text="3. Manual Board (guaranteed mode)"
+        android:textColor="#39FF6B" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Manual: paste the game FEN, pick your color, calibrate the board, then tap the opponent's move on the mini-board. Stockfish answers and the gesture plays it."
+        android:textColor="#7FA88D"
+        android:textSize="12sp" />
 </LinearLayout>

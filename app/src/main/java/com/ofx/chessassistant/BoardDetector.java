@@ -163,11 +163,19 @@ public class BoardDetector {
             }
         }
         if (n == 0) return 0;
-        float centerMean = centerSum / (float) n;
+        float mean = centerSum / (float) n;
 
-        // empty marble: spread under ~35 even on textured themes
-        if (max - min < 45) return 0;
-        return centerMean > 145 ? 'W' : 'B';
+        // white piece fill ~250, black piece fill ~20, square marble ~145 to ~235
+        if (mean >= 238f) return 'W';
+        if (mean <= 70f) return 'B';
+
+        // some themes render hollow rings or outlined pieces: internal contrast
+        // rescues those. light theme square luma sits well below white fill.
+        if ((max - min) > 45f) {
+            if (mean > 165f) return 'W';
+            if (mean < 110f) return 'B';
+        }
+        return 0;
     }
 
     private float squareLuma(Bitmap bmp, int x, int y, int sq) {
