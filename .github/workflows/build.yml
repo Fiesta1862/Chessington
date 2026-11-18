@@ -21,16 +21,20 @@ jobs:
       - name: Accept SDK licenses (runner ships the Android SDK)
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
-      - name: Build Stockfish (android arm64) into assets
+      - name: Download Stockfish (android arm64) into assets
         run: |
           mkdir -p app/src/main/assets
-          git clone --depth 1 https://github.com/official-stockfish/Stockfish.git /tmp/sf-src
-          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
-          make -C /tmp/sf-src/src -j2 ndk ARCH=armv8-a
-          BIN=$(find /tmp/sf-src -name "stockfish*" -type f ! -name "*.mk" | head -n1)
+          URL=$(gh api repos/official-stockfish/Stockfish/releases \
+            -q '[.[] | select(.assets[] | .name == "stockfish-android-arm64-universal.tar.gz")][0] | .assets[] | select(.name == "stockfish-android-arm64-universal.tar.gz") | .browser_download_url' | head -n1)
+          echo "asset: $URL"
+          curl -sL "$URL" -o /tmp/sf.tar.gz
+          tar -xzf /tmp/sf.tar.gz -C /tmp
+          BIN=$(find /tmp -name "stockfish*" -type f ! -name "*.tar.gz" | head -n1)
           file "$BIN"
           cp "$BIN" app/src/main/assets/stockfish
           chmod +x app/src/main/assets/stockfish
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
