@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Chess Assistant</string>
+    <string name="acc_description">Performs tap and drag gestures for the assistant overlay.</string>
+    <string name="notif_channel">Assistant</string>
+    <string name="notif_title">Chess Assistant running</string>
+    <string name="notif_text">Hidden overlay active. Undefeated mode.</string>
+</resources>

@@ -1,0 +1,54 @@
+name: Build Chessington APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Download Stockfish (android arm64) into assets
+        run: |
+          mkdir -p app/src/main/assets
+          SF_VER=16
+          curl -sL -o /tmp/sf.7z \
+            https://github.com/official-stockfish/Stockfish/releases/download/sf_16/stockfish-android-avx2.tar
+          tar -xf /tmp/sf.7z -C /tmp || true
+          BIN=$(find /tmp -name "stockfish*" -type f ! -name "*.tar" | head -n1)
+          if [ -z "$BIN" ]; then
+            # fallback: build latest tag from source
+            git clone --depth 1 https://github.com/official-stockfish/Stockfish.git /tmp/sf-src
+            make -C /tmp/sf-src/src -j2 ARCH=armv8-a profile=n
+            BIN=/tmp/sf-src/src/stockfish
+          fi
+          file "$BIN"
+          cp "$BIN" app/src/main/assets/stockfish
+          chmod +x app/src/main/assets/stockfish
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chessington-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
