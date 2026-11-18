@@ -10,8 +10,8 @@ android {
         applicationId "com.ofx.chessassistant"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0-undefeated"
+        versionCode 2
+        versionName "1.1-undefeated"
     }
 
     buildTypes {

@@ -145,7 +145,8 @@ public class AssistantService extends Service {
             if (bmp == null) return;
 
             BoardDetector.Frame frame = detector.analyze(bmp);
-            if (frame.stable && frame.fen != null && engine != null) {
+            if (frame.stable && frame.fen != null && engine != null
+                    && frame.sideToMove == frame.engineColor) {
                 String best = engine.bestMove(frame.fen, 300);
                 if (best != null && !best.matches("(none|null).*")) {
                     drawHint(frame, best);
